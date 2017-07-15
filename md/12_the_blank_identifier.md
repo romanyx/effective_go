@@ -24,7 +24,7 @@ if fi.IsDir() {
 }
 ```
 
-### Unused imports and variables ### {blank_unused}
+### Unused imports and variables ### {#blank_unused}
 
 It is an error to import a package or to declare a variable without using it. Unused imports bloat the program and slow compilation, while a variable that is initialized but not used is at least a wasted computation and perhaps indicative of a larger bug. When a program is under active development, however, unused imports and variables often arise and it can be annoying to delete them just to have the compilation proceed, only to have them be needed again later. The blank identifier provides a workaround.
 
