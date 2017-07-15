@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"html/template"
 	"io"
@@ -12,7 +13,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/russross/blackfriday"
+)
+
+var (
+	hostPort = flag.String("hostport", "localhost:8080", "server host and port")
+	logPath  = flag.String("log", "", "Log file path, default is output")
 )
 
 const (
@@ -20,12 +27,24 @@ const (
 )
 
 func main() {
+	flag.Parse()
+
+	if *logPath != "" {
+		logOut, err := os.Open(*logPath)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.SetOutput(logOut)
+	}
+
 	buf := new(bytes.Buffer)
 	files, _ := ioutil.ReadDir(mdDir)
 
-	sortedFilePaths := sortFiles(files)
+	paths := sortFiles(files)
 
-	for _, path := range sortedFilePaths {
+	for _, path := range paths {
 		file, err := os.Open(path)
 
 		if err != nil {
@@ -52,11 +71,12 @@ func main() {
 	html := buf.Bytes()
 	buf.Reset()
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	router := httprouter.New()
+	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Write(html)
-	})
+	}))
 
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(*hostPort, router)
 }
 
 func sortFiles(files []os.FileInfo) []string {

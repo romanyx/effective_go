@@ -1,36 +1,36 @@
-## Semicolons ## {#semicolons}
+## Точка с запятой ## {#semicolons}
 
-Like C, Go's formal grammar uses semicolons to terminate statements, but unlike in C, those semicolons do not appear in the source. Instead the lexer uses a simple rule to insert semicolons automatically as it scans, so the input text is mostly free of them.
+Как и в языке C, формальная грамматика языка Go использует точку с запятой для завершения конструкций, однако, в отличии от C, наличие их не всегда обязательно. Встроенный лексический анализатор использует простое правило для вставки точек с запятой по ходу сканирования, поэтому использование их в исходном коде по большей части необязательно.
 
-The rule is this. If the last token before a newline is an identifier (which includes words like `int` and `float64`), a basic literal such as a number or string constant, or one of the tokens
+Правило вставки точек с запятой анализатором следующее, если последний токен в строке - идентификатор (к примеру `int` и `float64`), представление базовых типов, таких как строка или число, или один из нижеперечисленных токенов
 
 ``` go
 break continue fallthrough return ++ -- ) }
 ```
 
-the lexer always inserts a semicolon after the token. This could be summarized as, “if the newline comes after a token that could end a statement, insert a semicolon”.
+лексический анализатор всегда вставит точку с запятой после них. Резюмировать это можно следующим образом: "Если строка, завершается токеном, который может означать конец конструкции, вставить точку с запятой"
 
-A semicolon can also be omitted immediately before a closing brace, so a statement such as
+Точка с запятой необязательна и перед закрывающей скобкой, что позволяет записать следующую конструкцию
 
 ``` go
-    go func() { for { dst <- <-src } }()
+go func() { for { dst <- <-src } }()
 ```
 
-needs no semicolons. Idiomatic Go programs have semicolons only in places such as `for` loop clauses, to separate the initializer, condition, and continuation elements. They are also necessary to separate multiple statements on a line, should you write code that way.
+без использования точек с запятой. Идематически код написанный на Go должнен использовать точку с запятой только в конструкциях подобных цилку `for` для разделения условия до начала цикла, условия для продожения цикла и действия в конце каждой итерации цикла. Она также обязательная для разделения нескольких конструкций записанных в одной строке, если вы пишите свой код подобным образом.
 
-One consequence of the semicolon insertion rules is that you cannot put the opening brace of a control structure (`if`, `for`, `switch`, or `select`) on the next line. If you do, a semicolon will be inserted before the brace, which could cause unwanted effects. Write them like this
+Единственное последствие из этого правила это невозможность перенести открывающую скобку для управляющих структур (`if`, `for`, `switch` или `select`) на следующую строку. Если код будет записан подобный образом, точка с запятой будет вставлена перед скобкой, что в свою очеред станет причиной нежелательного эффекта. Записывать подобные конструкции нужно следующим образом
 
 ``` go
 if i < f() {
-    g()
+	g()
 }
 ```
 
-not like this
+а не так
 
 ``` go
 if i < f()  // wrong!
 {           // wrong!
-    g()
+	g()
 }
 ```
