@@ -15,6 +15,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/russross/blackfriday"
+	gzip "github.com/socialradar/go-gzip-middleware"
 )
 
 var (
@@ -39,42 +40,16 @@ func main() {
 		log.SetOutput(logOut)
 	}
 
-	buf := new(bytes.Buffer)
-	files, _ := ioutil.ReadDir(mdDir)
-
-	paths := sortFiles(files)
-
-	for _, path := range paths {
-		file, err := os.Open(path)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		io.Copy(buf, file)
-	}
-
-	content := template.HTML(blackfriday.MarkdownCommon(buf.Bytes()))
-
-	t, err := template.ParseFiles("templates/layout.html")
+	html, err := generateHTML(mdDir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	view := struct{ Content template.HTML }{content}
-	buf = new(bytes.Buffer)
-
-	if err := t.ExecuteTemplate(buf, "layout.html", view); err != nil {
-		log.Fatal(err)
-	}
-
-	html := buf.Bytes()
-	buf.Reset()
-
 	router := httprouter.New()
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", gzip.Middleware(httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(html)
-	}))
+	}), false))
 
 	http.ListenAndServe(*hostPort, router)
 }
@@ -95,4 +70,37 @@ func sortFiles(files []os.FileInfo) []string {
 	}
 
 	return s
+}
+
+func generateHTML(dir string) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	files, _ := ioutil.ReadDir(dir)
+
+	paths := sortFiles(files)
+
+	for _, path := range paths {
+		file, err := os.Open(path)
+
+		if err != nil {
+			return []byte{}, err
+		}
+
+		io.Copy(buf, file)
+	}
+
+	content := template.HTML(blackfriday.MarkdownCommon(buf.Bytes()))
+
+	t, err := template.ParseFiles("templates/layout.html")
+	if err != nil {
+		return []byte{}, err
+	}
+
+	view := struct{ Content template.HTML }{content}
+	buf = new(bytes.Buffer)
+
+	if err := t.ExecuteTemplate(buf, "layout.html", view); err != nil {
+		return []byte{}, err
+	}
+
+	return buf.Bytes(), nil
 }
