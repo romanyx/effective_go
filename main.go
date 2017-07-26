@@ -12,10 +12,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/russross/blackfriday"
-	gzip "github.com/socialradar/go-gzip-middleware"
+	"github.com/socialradar/go-gzip-middleware"
 )
 
 var (
@@ -24,20 +25,15 @@ var (
 )
 
 const (
-	mdDir = "md"
+	mdDir      = "md"
+	reqTimeout = 9 * time.Second
 )
 
 func main() {
 	flag.Parse()
 
-	if *logPath != "" {
-		logOut, err := os.Open(*logPath)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.SetOutput(logOut)
+	if err := setLogOut(*logPath); err != nil {
+		log.Fatal(err)
 	}
 
 	html, err := generateHTML(mdDir)
@@ -46,12 +42,29 @@ func main() {
 	}
 
 	router := httprouter.New()
-	router.GET("/", gzip.Middleware(httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(html)
-	}), false))
+	router.GET("/", middleware(indexHandler(html)))
 
-	http.ListenAndServe(*hostPort, router)
+	server := http.Server{
+		Addr:        *hostPort,
+		Handler:     router,
+		ReadTimeout: reqTimeout,
+	}
+
+	log.Fatal(server.ListenAndServe())
+}
+
+func indexHandler(html []byte) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		w.Write(html)
+	}
+}
+
+func middleware(h httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8;")
+		gzh := gzip.Middleware(h, false)
+		gzh(w, r, p)
+	}
 }
 
 func sortFiles(files []os.FileInfo) []string {
@@ -103,4 +116,18 @@ func generateHTML(dir string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func setLogOut(path string) error {
+	if path != "" {
+		logOut, err := os.Open(path)
+
+		if err != nil {
+			return err
+		}
+
+		log.SetOutput(logOut)
+	}
+
+	return nil
 }
