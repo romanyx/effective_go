@@ -1,0 +1,1 @@
+# Перевод Effective Go
