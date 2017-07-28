@@ -15,18 +15,18 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/pkg/errors"
 	"github.com/russross/blackfriday"
-	"github.com/socialradar/go-gzip-middleware"
 )
 
 var (
-	hostPort = flag.String("hostport", "localhost:8080", "server host and port")
-	logPath  = flag.String("log", "", "Log file path, default is output")
+	addr    = flag.String("hostport", "localhost:8080", "server address")
+	logPath = flag.String("log", "", "Log file path, default is output")
 )
 
 const (
-	mdDir      = "md"
-	reqTimeout = 9 * time.Second
+	mdDir       = "md"
+	readTimeout = 9 * time.Second
 )
 
 func main() {
@@ -41,29 +41,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router := httprouter.New()
-	router.GET("/", middleware(indexHandler(html)))
+	s := NewServer(*addr, ReadTimeout(readTimeout), GET("/", indexHandler(html)), GzipOn)
 
-	server := http.Server{
-		Addr:        *hostPort,
-		Handler:     router,
-		ReadTimeout: reqTimeout,
-	}
-
-	log.Fatal(server.ListenAndServe())
+	log.Fatal(s.ListenAndServe())
 }
 
 func indexHandler(html []byte) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		w.Write(html)
-	}
-}
+		ctx := r.Context()
 
-func middleware(h httprouter.Handle) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8;")
-		gzh := gzip.Middleware(h, false)
-		gzh(w, r, p)
+		select {
+		case <-ctx.Done():
+			err := ctx.Err()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		default:
+			w.Write(html)
+		}
 	}
 }
 
@@ -71,15 +64,16 @@ func sortFiles(files []os.FileInfo) []string {
 	s := make([]string, len(files), len(files))
 
 	for _, f := range files {
-		if !f.IsDir() {
-			index, err := strconv.Atoi(strings.Split(f.Name(), "_")[0])
-
-			if err != nil {
-				log.Println(err)
-			}
-
-			s[index-1] = fmt.Sprintf("%s/%s", mdDir, f.Name())
+		if f.IsDir() {
+			continue
 		}
+
+		index, err := strconv.Atoi(strings.Split(f.Name(), "_")[0])
+		if err != nil {
+			log.Println(err)
+		}
+
+		s[index-1] = fmt.Sprintf("%s/%s", mdDir, f.Name())
 	}
 
 	return s
@@ -99,6 +93,9 @@ func generateHTML(dir string) ([]byte, error) {
 		}
 
 		io.Copy(buf, file)
+		if err := file.Close(); err != nil {
+			return []byte{}, errors.Wrapf(err, "on file close %s", path)
+		}
 	}
 
 	content := template.HTML(blackfriday.MarkdownCommon(buf.Bytes()))
@@ -119,15 +116,16 @@ func generateHTML(dir string) ([]byte, error) {
 }
 
 func setLogOut(path string) error {
-	if path != "" {
-		logOut, err := os.Open(path)
-
-		if err != nil {
-			return err
-		}
-
-		log.SetOutput(logOut)
+	if path == "" {
+		return nil
 	}
+
+	logOut, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	log.SetOutput(logOut)
 
 	return nil
 }
