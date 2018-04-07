@@ -1,40 +1,38 @@
-## Formatting ## {#formatting}
+## Форматирование ## {#formatting}
 
-Formatting issues are the most contentious but the least consequential. People can adapt to different formatting styles but it's better if they don't have to, and less time is devoted to the topic if everyone adheres to the same style. The problem is how to approach this Utopia without a long prescriptive style guide.
+Вопросы форматирования самые спорные, но наименее логически обоснованные. Люди могут адаптироваться к различным стилям форматирования, но лучше когда в этом нет необходимости, и вообще, меньше времени уделяется этой теме когда все вынуждены придерживаться одного и того же стиля. Проблема в том, как приблизиться к этой утопии без длинного предписывающего руководства по стилю.
 
-With Go we take an unusual approach and let the machine take care of most formatting issues. The `gofmt` program (also available as `go fmt`, which operates at the package level rather than source file level) reads a Go program and emits the source in a standard style of indentation and vertical alignment, retaining and if necessary reformatting comments. If you want to know how to handle some new layout situation, run `gofmt`; if the answer doesn't seem right, rearrange your program (or file a bug about `gofmt`), don't work around it.
+C Go мы применяем необычный подход и даем машине позаботиться о большинстве проблемах форматирования. Программа `gofmt` (также доступно как `go fmt` который действует на уровне пакета а не на уровне исходного файла) считывает Go программу и выводит исходник со стандартным стилем отступов и вертикальным выравниванием, сохраняет, и при необходимости переформатирует комментарии. Если вы не знаете как правильно структурировать код при его изменении, запустите `gofmt`; если ответ кажется неправильным - поправьте свою программу (или файл с ошибкой на который указывает `gofmt`), не работайте в обход `gofmt`.
 
-As an example, there's no need to spend time lining up the comments on the fields of a structure. `Gofmt` will do that for you. Given the declaration
+В качестве примера, нет необходимости тратить время на выравнивание комментариев для полей структур. `Gofmt` сделает это для Вас. Для данного фрагмента кода:
 
-``` go
-type T struct {
-    name string // name of the object
-    value int // its value
-}
-```
+    ``` go
+    type T struct {
+	    name string // name of the object
+	    value int // its value
+    }
+    ```
+, `gofmt` выстроит поля структуры следующим образом:
 
-`gofmt` will line up the columns:
+    ``` go
+    type T struct {
+		name  string // name of the object
+		value int    // its value
+    }
+    ```
+Весь Go - код в стандартных пакетах отформатирован при помощи `gofmt`.
 
-``` go
-type T struct {
-    name    string // name of the object
-    value   int    // its value
-}
-```
-
-All Go code in the standard packages has been formatted with `gofmt`.
-
-Some formatting details remain. Very briefly:
+Некоторые детали форматирования остаются. Очень кратко о них:
 
 <dl>
-<dt>Indentation</dt>
-<dd>We use tabs for indentation and `gofmt` emits them by default. Use spaces only if you must.</dd>
-<dt>Line length</dt>
-<dd>Go has no line length limit. Don't worry about overflowing a punched card. If a line feels too long, wrap it and indent with an extra tab.</dd>
-<dt>Parentheses</dt>
-<dd>Go needs fewer parentheses than C and Java: control structures (`if`, `for`, `switch`) do not have parentheses in their syntax. Also, the operator precedence hierarchy is shorter and clearer, so
+<dt>Отступ</dt>
+<dd>Мы используем табуляцию для оступов и `gofmt` использует их по-умолчанию.</dd>
+<dt>Длина строки</dt>
+<dd>У Go нет придела для строки. Не волнуйтесь об этом. Если строка слишком длинная, прервите ее и добавьте дополнительный отступ (на новой строке).</dd>
+<dt>Круглые скобки</dt>
+<dd>Go требует меньше скобок, чем C и Java: управляющие конструкции (`if`, `for`, `switch`) не имеют круглых скобок в своем синтаксисе. Также, иерархия более высокого приоритета операторов является короче и чище, как:
 <pre>
 x<<8 + y<<16
 </pre>
-means what the spacing implies, unlike in the other languages.</dd>
+которое не нуждается в добавлении пробелов, в отличии от других языков.</dd>
 </dl>
